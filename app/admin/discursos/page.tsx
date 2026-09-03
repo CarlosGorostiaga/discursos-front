@@ -65,9 +65,7 @@ export default function DiscursosPage() {
   const [guardandoId, setGuardandoId] = useState<number | null>(null);
   const [eliminandoId, setEliminandoId] = useState<number | null>(null);
 
-  const [intercambiandoId, setIntercambiandoId] = useState<number | null>(
-    null,
-  );
+  const [intercambiandoId, setIntercambiandoId] = useState<number | null>(null);
   const [destinoIntercambio, setDestinoIntercambio] = useState("");
   const [guardandoIntercambio, setGuardandoIntercambio] = useState(false);
 
@@ -125,9 +123,7 @@ export default function DiscursosPage() {
       const creado = await crearDiscurso({
         fecha: nuevo.fecha,
         discursanteId: nuevo.discursanteId ? Number(nuevo.discursanteId) : null,
-        bosquejoNumero: nuevo.bosquejoNumero
-          ? Number(nuevo.bosquejoNumero)
-          : null,
+        bosquejoNumero: nuevo.bosquejoNumero ? Number(nuevo.bosquejoNumero) : null,
       });
       setDiscursos((prev) => [...prev, creado]);
       setNuevo({ fecha: "", discursanteId: "", bosquejoNumero: "" });
@@ -244,6 +240,7 @@ export default function DiscursosPage() {
               {discursantes.map((ds) => (
                 <option key={ds.id} value={ds.id}>
                   {ds.nombre}
+                  {ds.congregacionOrigen ? ` · ${ds.congregacionOrigen}` : ""}
                 </option>
               ))}
             </select>
@@ -328,6 +325,7 @@ export default function DiscursosPage() {
                       <option key={x.id} value={x.id}>
                         {formatearFecha(x.fecha)} ·{" "}
                         {x.discursante?.nombre ?? "Sin asignar"}
+                        {x.discursante?.congregacionOrigen ? ` · ${x.discursante.congregacionOrigen}` : ""}
                       </option>
                     ))}
                 </select>
@@ -351,15 +349,14 @@ export default function DiscursosPage() {
                 </div>
               </div>
             )}
+
             <div className="flex flex-col sm:flex-row gap-2 mt-2">
               <select
                 value={d.discursanteId ?? ""}
                 disabled={guardandoId === d.id}
                 onChange={(e) =>
                   asignar(d.id, {
-                    discursanteId: e.target.value
-                      ? Number(e.target.value)
-                      : null,
+                    discursanteId: e.target.value ? Number(e.target.value) : null,
                   })
                 }
                 className={`sm:flex-1 ${campoClase}`}
@@ -368,6 +365,7 @@ export default function DiscursosPage() {
                 {discursantes.map((ds) => (
                   <option key={ds.id} value={ds.id}>
                     {ds.nombre}
+                    {ds.congregacionOrigen ? ` · ${ds.congregacionOrigen}` : ""}
                   </option>
                 ))}
               </select>
@@ -376,9 +374,7 @@ export default function DiscursosPage() {
                 disabled={guardandoId === d.id}
                 onChange={(e) =>
                   asignar(d.id, {
-                    bosquejoNumero: e.target.value
-                      ? Number(e.target.value)
-                      : null,
+                    bosquejoNumero: e.target.value ? Number(e.target.value) : null,
                   })
                 }
                 className={`sm:flex-1 ${campoClase}`}
@@ -391,6 +387,13 @@ export default function DiscursosPage() {
                 ))}
               </select>
             </div>
+
+            {d.discursante && (
+              <p className="mt-2 text-xs text-gray-500 break-words">
+                Congregación: {d.discursante.congregacionOrigen?.trim() || "Sin indicar"}
+              </p>
+            )}
+
             <input
               value={d.notas ?? ""}
               onChange={(e) => cambiarNotas(d.id, e.target.value)}
@@ -400,6 +403,7 @@ export default function DiscursosPage() {
             />
           </div>
         ))}
+
         {proximos.length === 0 && (
           <p className="text-sm text-gray-500 text-center mt-6">
             No hay próximos discursos
