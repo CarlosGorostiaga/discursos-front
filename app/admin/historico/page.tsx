@@ -5,27 +5,13 @@ import {
   obtenerDiscursos,
   type Discurso,
   type Discursante,
-  type EstadoDiscurso,
 } from "../../../lib/api";
-import { formatearFecha } from "../../../lib/fechas";
 import PageHeader from "../_components/PageHeader";
 import SearchInput from "../_components/SearchInput";
+import { EstadoEtiqueta } from "../_components/Estado";
+import { textoError } from "../_components/estilos";
 
 type Vista = "fecha" | "discursante";
-
-const estilosEstado: Record<EstadoDiscurso, string> = {
-  pendiente: "bg-gray-100 text-gray-600",
-  enviado: "bg-blue-100 text-blue-700",
-  confirmado: "bg-green-100 text-green-700",
-  rechazado: "bg-red-100 text-red-700",
-};
-
-const etiquetasEstado: Record<EstadoDiscurso, string> = {
-  pendiente: "Pendiente",
-  enviado: "Enviado",
-  confirmado: "Confirmado",
-  rechazado: "Rechazado",
-};
 
 function aFecha(fecha: string) {
   return new Date(fecha.slice(0, 10) + "T00:00:00");
@@ -64,21 +50,15 @@ function coincide(d: Discurso, busqueda: string) {
   return campos.some((c) => c && normalizar(c).includes(busqueda));
 }
 
-function EstadoBadge({ estado }: { estado: EstadoDiscurso }) {
-  return (
-    <span
-      className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${estilosEstado[estado]}`}
-    >
-      {etiquetasEstado[estado]}
-    </span>
-  );
-}
-
 function TextoBosquejo({ d }: { d: Discurso }) {
   return (
     <>
-      {d.bosquejoNumero ? `Bosquejo ${d.bosquejoNumero}` : "Sin bosquejo"}
-      {d.bosquejo?.titulo ? ` · ${d.bosquejo.titulo}` : ""}
+      {d.bosquejo?.titulo ?? (d.bosquejoNumero ? "" : "Sin bosquejo")}
+      {d.bosquejoNumero ? (
+        <span className="ml-2 font-sans text-xs text-apagado/80">
+          n.º {d.bosquejoNumero}
+        </span>
+      ) : null}
     </>
   );
 }
@@ -140,18 +120,13 @@ export default function HistoricoPage() {
     );
   }, [filtrados]);
 
-  if (cargando) {
+  if (cargando || error) {
     return (
-      <main className="flex items-center justify-center py-24">
-        <p className="text-gray-500 text-sm">Cargando histórico…</p>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="flex items-center justify-center py-24">
-        <p className="text-red-500 text-sm">{error}</p>
+      <main>
+        <PageHeader title="Histórico" />
+        <p className={`mt-20 px-6 text-center ${error ? textoError : "text-sm text-apagado"}`}>
+          {error ?? "Cargando histórico…"}
+        </p>
       </main>
     );
   }
@@ -159,10 +134,11 @@ export default function HistoricoPage() {
   const botonVista = (valor: Vista, texto: string) => (
     <button
       onClick={() => setVista(valor)}
-      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+      aria-pressed={vista === valor}
+      className={`flex-1 rounded-full py-2 text-sm font-medium transition-colors ${
         vista === valor
-          ? "bg-white text-gray-900 shadow-sm"
-          : "text-gray-500 hover:text-gray-700"
+          ? "bg-tinta text-white"
+          : "text-apagado hover:text-tinta"
       }`}
     >
       {texto}
@@ -176,126 +152,121 @@ export default function HistoricoPage() {
         subtitle={`${pasados.length} discursos pasados`}
       />
 
-      <div className="px-4 mt-4 space-y-3">
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+      <div className="mx-auto max-w-md px-5">
+        <div className="mt-5 flex gap-1 rounded-full border border-linea bg-white p-1">
           {botonVista("fecha", "Por fecha")}
           {botonVista("discursante", "Por discursante")}
         </div>
-        <SearchInput
-          value={busqueda}
-          onChange={setBusqueda}
-          placeholder="Buscar nombre, congregación o bosquejo"
-        />
-      </div>
+        <div className="mt-3">
+          <SearchInput
+            value={busqueda}
+            onChange={setBusqueda}
+            placeholder="Buscar nombre o bosquejo"
+          />
+        </div>
 
-      {filtrados.length === 0 && (
-        <p className="text-sm text-gray-500 text-center mt-10">
-          {pasados.length === 0
-            ? "Todavía no hay discursos pasados"
-            : "No hay resultados para esa búsqueda"}
-        </p>
-      )}
+        {filtrados.length === 0 && (
+          <p className="mt-10 text-center text-sm text-apagado">
+            {pasados.length === 0
+              ? "Todavía no hay discursos pasados."
+              : "Ningún discurso coincide con esa búsqueda."}
+          </p>
+        )}
 
-      {vista === "fecha" &&
-        porMes.map(({ mes, items }) => (
-          <section key={mes} className="px-4 mt-6">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
-              {mes}
-            </h2>
-            <div className="space-y-2">
-              {items.map((d) => (
-                <div
-                  key={d.id}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-start justify-between gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-500 capitalize">
-                      {formatearFecha(d.fecha)}
-                    </p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {d.discursante?.nombre ?? "Sin asignar"}
-                    </p>
-                    {d.discursante?.congregacionOrigen && (
-                      <p className="text-xs text-gray-500">
-                        {d.discursante.congregacionOrigen}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      <TextoBosquejo d={d} />
-                    </p>
-                    {d.notas && (
-                      <p className="text-xs text-gray-400 mt-1 break-words">
-                        {d.notas}
-                      </p>
-                    )}
-                  </div>
-                  <EstadoBadge estado={d.estado} />
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-
-      {vista === "discursante" && porDiscursante.length > 0 && (
-        <div className="px-4 mt-4 space-y-2">
-          {porDiscursante.map(({ discursante, items }) => (
-            <details
-              key={discursante.id}
-              className="group bg-white rounded-2xl border border-gray-100 shadow-sm"
-            >
-              <summary className="list-none cursor-pointer p-3.5 flex items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    {discursante.nombre}
-                  </p>
-                  {discursante.congregacionOrigen && (
-                    <p className="text-xs text-gray-500">
-                      {discursante.congregacionOrigen}
-                    </p>
-                  )}
-                  <p className="text-xs text-blue-600 mt-0.5">
-                    Último: {fechaCorta(items[0].fecha)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                    {items.length} {items.length === 1 ? "discurso" : "discursos"}
-                  </span>
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2.5}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180"
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </div>
-              </summary>
-              <ul className="border-t border-gray-100 px-3.5 py-2 space-y-2">
+        {vista === "fecha" &&
+          porMes.map(({ mes, items }) => (
+            <section key={mes} className="mt-8">
+              <h2 className="font-serif text-lg first-letter:uppercase text-texto">
+                {mes}
+              </h2>
+              <ul className="mt-2 divide-y divide-linea border-y border-linea">
                 {items.map((d) => (
-                  <li
-                    key={d.id}
-                    className="flex items-start justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-xs text-gray-500">
-                        {fechaCorta(d.fecha)}
+                  <li key={d.id} className="flex items-start gap-4 py-4">
+                    <p className="w-9 shrink-0 pt-0.5 text-center font-serif text-2xl leading-none text-tinta">
+                      {aFecha(d.fecha).getDate()}
+                    </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-texto">
+                        {d.discursante?.nombre ?? (
+                          <span className="text-apagado">Sin asignar</span>
+                        )}
                       </p>
-                      <p className="text-sm text-gray-800">
+                      {d.discursante?.congregacionOrigen && (
+                        <p className="text-xs text-apagado">
+                          Congregación {d.discursante.congregacionOrigen}
+                        </p>
+                      )}
+                      <p className="mt-1 font-serif text-sm leading-snug text-apagado">
                         <TextoBosquejo d={d} />
                       </p>
+                      {d.notas && (
+                        <p className="mt-1 break-words text-xs text-apagado/80">
+                          {d.notas}
+                        </p>
+                      )}
                     </div>
-                    <EstadoBadge estado={d.estado} />
+                    <EstadoEtiqueta estado={d.estado} />
                   </li>
                 ))}
               </ul>
-            </details>
+            </section>
           ))}
-        </div>
-      )}
+
+        {vista === "discursante" && porDiscursante.length > 0 && (
+          <ul className="mt-6 divide-y divide-linea border-y border-linea">
+            {porDiscursante.map(({ discursante, items }) => (
+              <li key={discursante.id}>
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-4 [&::-webkit-details-marker]:hidden">
+                    <div className="min-w-0">
+                      <p className="font-serif text-[1.05rem] text-texto">
+                        {discursante.nombre}
+                      </p>
+                      {discursante.congregacionOrigen && (
+                        <p className="text-xs text-apagado">
+                          Congregación {discursante.congregacionOrigen}
+                        </p>
+                      )}
+                      <p className="mt-1 text-xs text-tinta">
+                        Última visita: {fechaCorta(items[0].fecha)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-sm text-apagado">
+                        {items.length} {items.length === 1 ? "discurso" : "discursos"}
+                      </span>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-4 w-4 text-apagado transition-transform group-open:rotate-180"
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </div>
+                  </summary>
+                  <ul className="mb-4 space-y-3 border-l-2 border-tinta-suave pl-4">
+                    {items.map((d) => (
+                      <li key={d.id} className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs text-apagado">{fechaCorta(d.fecha)}</p>
+                          <p className="font-serif text-sm leading-snug text-texto">
+                            <TextoBosquejo d={d} />
+                          </p>
+                        </div>
+                        <EstadoEtiqueta estado={d.estado} />
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </main>
   );
 }

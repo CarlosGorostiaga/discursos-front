@@ -13,6 +13,15 @@ import {
 import { formatearFecha } from "../../../lib/fechas";
 import PageHeader from "../_components/PageHeader";
 import SearchInput from "../_components/SearchInput";
+import {
+  botonCabecera,
+  botonPeligro,
+  botonPrimario,
+  botonSecundario,
+  campo,
+  panel,
+  textoError,
+} from "../_components/estilos";
 
 export default function DiscursantesPage() {
   const [discursantes, setDiscursantes] = useState<Discursante[]>([]);
@@ -121,36 +130,30 @@ export default function DiscursantesPage() {
     cargar();
   }
 
+  const campos: {
+    clave: keyof typeof form;
+    texto: string;
+    tipo?: string;
+  }[] = [
+    { clave: "nombre", texto: "Nombre" },
+    { clave: "telefono", texto: "Teléfono", tipo: "tel" },
+    { clave: "telefonoResponsable", texto: "Teléfono del responsable", tipo: "tel" },
+    { clave: "congregacionOrigen", texto: "Congregación de origen" },
+  ];
+
   const formularioCampos = (
-    <div className="space-y-2">
-      <input
-        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-300 outline-none transition-colors"
-        placeholder="Nombre"
-        value={form.nombre}
-        onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-      />
-      <input
-        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-300 outline-none transition-colors"
-        placeholder="Teléfono discursante"
-        value={form.telefono}
-        onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-      />
-      <input
-        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-300 outline-none transition-colors"
-        placeholder="Teléfono responsable"
-        value={form.telefonoResponsable}
-        onChange={(e) =>
-          setForm({ ...form, telefonoResponsable: e.target.value })
-        }
-      />
-      <input
-        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-300 outline-none transition-colors"
-        placeholder="Congregación de origen"
-        value={form.congregacionOrigen}
-        onChange={(e) =>
-          setForm({ ...form, congregacionOrigen: e.target.value })
-        }
-      />
+    <div className="space-y-3">
+      {campos.map((c) => (
+        <label key={c.clave} className="block">
+          <span className="text-xs text-apagado">{c.texto}</span>
+          <input
+            className={`mt-1 ${campo}`}
+            type={c.tipo ?? "text"}
+            value={form[c.clave]}
+            onChange={(e) => setForm({ ...form, [c.clave]: e.target.value })}
+          />
+        </label>
+      ))}
     </div>
   );
 
@@ -180,94 +183,98 @@ export default function DiscursantesPage() {
                 congregacionOrigen: "",
               });
             }}
-            className="shrink-0 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-medium px-3.5 py-2 rounded-full shadow-sm shadow-blue-200 transition-colors"
+            className={botonCabecera}
           >
-            + Nuevo
+            {mostrarNuevo ? "Cerrar" : "+ Nuevo"}
           </button>
         }
       />
 
-      {error && (
-        <p className="text-red-500 text-sm text-center mt-4">{error}</p>
-      )}
+      <div className="mx-auto max-w-md px-5">
+        {error && <p className={`mt-4 text-center ${textoError}`}>{error}</p>}
 
-      <div className="px-4 mt-4">
-        <SearchInput
-          value={busqueda}
-          onChange={setBusqueda}
-          placeholder="Buscar por nombre o congregación…"
-        />
-      </div>
-
-      {mostrarNuevo && (
-        <div className="px-4 mt-4">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-            {formularioCampos}
+        {mostrarNuevo && (
+          <div className={`mt-5 ${panel}`}>
+            <h2 className="font-serif text-lg text-texto">Nuevo discursante</h2>
+            <div className="mt-3">{formularioCampos}</div>
             <button
               onClick={crearNuevo}
-              className="mt-3 w-full bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+              disabled={!form.nombre || !form.telefono}
+              className={`mt-4 w-full ${botonPrimario}`}
             >
-              Guardar
+              Guardar discursante
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="px-4 mt-4 space-y-2">
-        {cargando && <p className="text-sm text-gray-500">Cargando…</p>}
+        <div className="mt-5">
+          <SearchInput
+            value={busqueda}
+            onChange={setBusqueda}
+            placeholder="Buscar por nombre o congregación"
+          />
+        </div>
+
+        {cargando && (
+          <p className="mt-10 text-center text-sm text-apagado">Cargando…</p>
+        )}
         {!cargando && term && discursantesFiltrados.length === 0 && (
-          <p className="text-sm text-gray-500 text-center mt-6">
-            Sin resultados para &ldquo;{busqueda}&rdquo;
+          <p className="mt-10 text-center text-sm text-apagado">
+            Ningún discursante coincide con &ldquo;{busqueda}&rdquo;
           </p>
         )}
-        {discursantesFiltrados.map((d) =>
-          editandoId === d.id ? (
-            <div
-              key={d.id}
-              className="bg-white rounded-2xl ring-2 ring-blue-200 shadow-sm p-4"
-            >
-              {formularioCampos}
-              <div className="flex gap-2 mt-3">
+
+        <ul className="mt-5 divide-y divide-linea border-y border-linea">
+          {discursantesFiltrados.map((d) =>
+            editandoId === d.id ? (
+              <li key={d.id} className="py-4">
+                <h2 className="font-serif text-lg text-texto">Editar discursante</h2>
+                <div className="mt-3">{formularioCampos}</div>
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => guardarEdicion(d.id)}
+                    className={`flex-1 ${botonPrimario}`}
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    onClick={() => setEditandoId(null)}
+                    className={`flex-1 ${botonSecundario}`}
+                  >
+                    Cancelar
+                  </button>
+                </div>
                 <button
-                  onClick={() => guardarEdicion(d.id)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+                  onClick={() => eliminar(d)}
+                  disabled={eliminandoId === d.id}
+                  className={`mt-2 w-full ${botonPeligro}`}
                 >
-                  Guardar
+                  {eliminandoId === d.id ? "Eliminando…" : "Eliminar discursante"}
                 </button>
+              </li>
+            ) : (
+              <li key={d.id}>
                 <button
-                  onClick={() => setEditandoId(null)}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2.5 rounded-xl transition-colors"
+                  onClick={() => iniciarEdicion(d)}
+                  className="block w-full py-3.5 text-left transition-colors hover:bg-white"
                 >
-                  Cancelar
+                  <p className="font-serif text-[1.05rem] text-texto">{d.nombre}</p>
+                  {d.congregacionOrigen && (
+                    <p className="mt-0.5 text-sm text-apagado">
+                      Congregación {d.congregacionOrigen}
+                    </p>
+                  )}
+                  <p className="mt-1 flex flex-wrap gap-x-4 text-xs text-apagado/80">
+                    <span>Tel. {d.telefono}</span>
+                    {d.telefonoResponsable && (
+                      <span>Responsable {d.telefonoResponsable}</span>
+                    )}
+                  </p>
                 </button>
-              </div>
-              <button
-                onClick={() => eliminar(d)}
-                disabled={eliminandoId === d.id}
-                className="mt-3 w-full text-red-600 hover:bg-red-50 active:bg-red-100 disabled:opacity-50 text-sm font-medium py-2.5 rounded-xl border border-red-100 transition-colors"
-              >
-                {eliminandoId === d.id ? "Eliminando…" : "Eliminar discursante"}
-              </button>
-            </div>
-          ) : (
-            <div
-              key={d.id}
-              onClick={() => iniciarEdicion(d)}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 cursor-pointer hover:shadow-md hover:ring-1 hover:ring-blue-200 transition-shadow"
-            >
-              <p className="text-sm font-medium text-gray-900">{d.nombre}</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {d.telefono}{" "}
-                {d.congregacionOrigen ? `· ${d.congregacionOrigen}` : ""}
-              </p>
-              {d.telefonoResponsable && (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Responsable: {d.telefonoResponsable}
-                </p>
-              )}
-            </div>
-          ),
-        )}
+              </li>
+            ),
+          )}
+        </ul>
       </div>
     </main>
   );

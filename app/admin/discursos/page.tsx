@@ -16,6 +16,13 @@ import {
 } from "../../../lib/api";
 import { formatearFecha } from "../../../lib/fechas";
 import PageHeader from "../_components/PageHeader";
+import {
+  botonCabecera,
+  botonPrimario,
+  campo,
+  panel,
+  textoError,
+} from "../_components/estilos";
 
 function IconTrash(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -186,8 +193,9 @@ export default function DiscursosPage() {
 
   if (cargando) {
     return (
-      <main className="flex items-center justify-center py-24">
-        <p className="text-gray-500 text-sm">Cargando…</p>
+      <main>
+        <PageHeader title="Asignar discursos" />
+        <p className="mt-20 text-center text-sm text-apagado">Cargando…</p>
       </main>
     );
   }
@@ -198,217 +206,251 @@ export default function DiscursosPage() {
     .filter((d) => new Date(d.fecha.slice(0, 10) + "T00:00:00") >= hoy)
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
-  const campoClase =
-    "w-full min-w-0 border border-gray-200 rounded-xl px-2.5 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-300 outline-none transition-colors";
+  // Agrupa por mes
+  const anioActual = hoy.getFullYear();
+  const meses: { clave: string; titulo: string; anio: number; items: Discurso[] }[] = [];
+  for (const d of proximos) {
+    const f = new Date(d.fecha.slice(0, 10) + "T00:00:00");
+    const clave = `${f.getFullYear()}-${f.getMonth()}`;
+    const ultimo = meses[meses.length - 1];
+    if (ultimo && ultimo.clave === clave) ultimo.items.push(d);
+    else
+      meses.push({
+        clave,
+        titulo: f.toLocaleDateString("es-ES", { month: "long" }),
+        anio: f.getFullYear(),
+        items: [d],
+      });
+  }
+
+  const opcionesDiscursantes = discursantes.map((ds) => (
+    <option key={ds.id} value={ds.id}>
+      {ds.nombre}
+      {ds.congregacionOrigen ? ` (${ds.congregacionOrigen})` : ""}
+    </option>
+  ));
+
+  const opcionesBosquejos = bosquejos.map((b) => (
+    <option key={b.numero} value={b.numero}>
+      {b.numero}. {b.titulo}
+    </option>
+  ));
+
+  const botonIcono =
+    "shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors disabled:opacity-50";
 
   return (
     <main className="pb-10">
       <PageHeader
         title="Asignar discursos"
-        subtitle="Elige discursante y bosquejo para cada día"
+        subtitle="Quién viene cada domingo"
         right={
           <button
             onClick={() => setMostrarNuevo(!mostrarNuevo)}
-            className="shrink-0 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white text-sm font-medium px-3.5 py-2 rounded-full shadow-sm shadow-blue-200 transition-colors"
+            className={botonCabecera}
           >
-            + Nuevo
+            {mostrarNuevo ? "Cerrar" : "+ Nuevo"}
           </button>
         }
       />
 
-      {error && (
-        <p className="text-red-500 text-sm text-center mt-4">{error}</p>
-      )}
+      <div className="mx-auto max-w-md px-5">
+        {error && <p className={`mt-4 text-center ${textoError}`}>{error}</p>}
 
-      {mostrarNuevo && (
-        <div className="px-4 mt-4">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
-            <input
-              type="date"
-              value={nuevo.fecha}
-              onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })}
-              className={campoClase}
-            />
-            <select
-              value={nuevo.discursanteId}
-              onChange={(e) =>
-                setNuevo({ ...nuevo, discursanteId: e.target.value })
-              }
-              className={campoClase}
-            >
-              <option value="">Sin asignar</option>
-              {discursantes.map((ds) => (
-                <option key={ds.id} value={ds.id}>
-                  {ds.nombre}
-                  {ds.congregacionOrigen ? ` · ${ds.congregacionOrigen}` : ""}
-                </option>
-              ))}
-            </select>
-            <select
-              value={nuevo.bosquejoNumero}
-              onChange={(e) =>
-                setNuevo({ ...nuevo, bosquejoNumero: e.target.value })
-              }
-              className={campoClase}
-            >
-              <option value="">Sin bosquejo</option>
-              {bosquejos.map((b) => (
-                <option key={b.numero} value={b.numero}>
-                  {b.numero} · {b.titulo}
-                </option>
-              ))}
-            </select>
+        {mostrarNuevo && (
+          <div className={`mt-5 ${panel}`}>
+            <h2 className="font-serif text-lg text-texto">Nuevo discurso</h2>
+            <div className="mt-3 space-y-3">
+              <label className="block">
+                <span className="text-xs text-apagado">Fecha</span>
+                <input
+                  type="date"
+                  value={nuevo.fecha}
+                  onChange={(e) => setNuevo({ ...nuevo, fecha: e.target.value })}
+                  className={`mt-1 ${campo}`}
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-apagado">Discursante</span>
+                <select
+                  value={nuevo.discursanteId}
+                  onChange={(e) =>
+                    setNuevo({ ...nuevo, discursanteId: e.target.value })
+                  }
+                  className={`mt-1 ${campo}`}
+                >
+                  <option value="">Sin asignar</option>
+                  {opcionesDiscursantes}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs text-apagado">Bosquejo</span>
+                <select
+                  value={nuevo.bosquejoNumero}
+                  onChange={(e) =>
+                    setNuevo({ ...nuevo, bosquejoNumero: e.target.value })
+                  }
+                  className={`mt-1 ${campo}`}
+                >
+                  <option value="">Sin bosquejo</option>
+                  {opcionesBosquejos}
+                </select>
+              </label>
+            </div>
             <button
               onClick={crearNuevo}
               disabled={!nuevo.fecha || creando}
-              className="w-full bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+              className={`mt-4 w-full ${botonPrimario}`}
             >
-              {creando ? "Guardando…" : "Guardar"}
+              {creando ? "Guardando…" : "Guardar discurso"}
             </button>
           </div>
-        </div>
-      )}
-
-      <div className="px-4 mt-4 space-y-2">
-        {proximos.map((d) => (
-          <div
-            key={d.id}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-blue-600 font-medium capitalize">
-                {formatearFecha(d.fecha)}
-              </p>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    setDestinoIntercambio("");
-                    setIntercambiandoId(
-                      intercambiandoId === d.id ? null : d.id,
-                    );
-                  }}
-                  aria-label="Intercambiar discurso"
-                  className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-                    intercambiandoId === d.id
-                      ? "text-blue-600 bg-blue-50"
-                      : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                  }`}
-                >
-                  <IconSwap className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => eliminar(d)}
-                  disabled={eliminandoId === d.id}
-                  aria-label="Eliminar discurso"
-                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                >
-                  <IconTrash className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {intercambiandoId === d.id && (
-              <div className="mt-2 p-3 rounded-xl bg-blue-50 border border-blue-100 space-y-2">
-                <p className="text-xs text-blue-700">
-                  Intercambia discursante y bosquejo con otro día (ambos
-                  quedarán en estado &ldquo;pendiente&rdquo;).
-                </p>
-                <select
-                  value={destinoIntercambio}
-                  onChange={(e) => setDestinoIntercambio(e.target.value)}
-                  className={campoClase}
-                >
-                  <option value="">Selecciona un discurso…</option>
-                  {proximos
-                    .filter((x) => x.id !== d.id)
-                    .map((x) => (
-                      <option key={x.id} value={x.id}>
-                        {formatearFecha(x.fecha)} ·{" "}
-                        {x.discursante?.nombre ?? "Sin asignar"}
-                        {x.discursante?.congregacionOrigen ? ` · ${x.discursante.congregacionOrigen}` : ""}
-                      </option>
-                    ))}
-                </select>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => confirmarIntercambio(d.id)}
-                    disabled={!destinoIntercambio || guardandoIntercambio}
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-xl transition-colors"
-                  >
-                    {guardandoIntercambio ? "Intercambiando…" : "Confirmar"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIntercambiandoId(null);
-                      setDestinoIntercambio("");
-                    }}
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 rounded-xl transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-2 mt-2">
-              <select
-                value={d.discursanteId ?? ""}
-                disabled={guardandoId === d.id}
-                onChange={(e) =>
-                  asignar(d.id, {
-                    discursanteId: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-                className={`sm:flex-1 ${campoClase}`}
-              >
-                <option value="">Sin asignar</option>
-                {discursantes.map((ds) => (
-                  <option key={ds.id} value={ds.id}>
-                    {ds.nombre}
-                    {ds.congregacionOrigen ? ` · ${ds.congregacionOrigen}` : ""}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={d.bosquejoNumero ?? ""}
-                disabled={guardandoId === d.id}
-                onChange={(e) =>
-                  asignar(d.id, {
-                    bosquejoNumero: e.target.value ? Number(e.target.value) : null,
-                  })
-                }
-                className={`sm:flex-1 ${campoClase}`}
-              >
-                <option value="">Sin bosquejo</option>
-                {bosquejos.map((b) => (
-                  <option key={b.numero} value={b.numero}>
-                    {b.numero} · {b.titulo}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {d.discursante && (
-              <p className="mt-2 text-xs text-gray-500 break-words">
-                Congregación: {d.discursante.congregacionOrigen?.trim() || "Sin indicar"}
-              </p>
-            )}
-
-            <input
-              value={d.notas ?? ""}
-              onChange={(e) => cambiarNotas(d.id, e.target.value)}
-              onBlur={(e) => guardarNotas(d.id, e.target.value)}
-              placeholder="Notas (canción, imagen…)"
-              className={`mt-2 ${campoClase}`}
-            />
-          </div>
-        ))}
+        )}
 
         {proximos.length === 0 && (
-          <p className="text-sm text-gray-500 text-center mt-6">
-            No hay próximos discursos
-          </p>
+          <div className="mt-16 text-center">
+            <p className="font-serif text-lg text-texto">
+              No hay discursos programados
+            </p>
+            <p className="mt-1 text-sm text-apagado">
+              Pulsa «+ Nuevo» para añadir el siguiente domingo.
+            </p>
+          </div>
         )}
+
+        {meses.map((mes) => (
+          <section key={mes.clave} className="mt-8">
+            <h2 className="font-serif text-lg capitalize text-texto">
+              {mes.titulo}
+              {mes.anio !== anioActual && (
+                <span className="ml-2 font-sans text-sm text-apagado">
+                  {mes.anio}
+                </span>
+              )}
+            </h2>
+            <ul className="mt-2 divide-y divide-linea border-y border-linea">
+              {mes.items.map((d) => (
+                <li key={d.id} className="py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-serif text-[1.05rem] first-letter:uppercase text-tinta">
+                      {formatearFecha(d.fecha)}
+                    </p>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => {
+                          setDestinoIntercambio("");
+                          setIntercambiandoId(
+                            intercambiandoId === d.id ? null : d.id,
+                          );
+                        }}
+                        aria-label="Intercambiar con otro domingo"
+                        title="Intercambiar con otro domingo"
+                        className={`${botonIcono} ${
+                          intercambiandoId === d.id
+                            ? "bg-tinta-suave text-tinta"
+                            : "text-apagado hover:bg-tinta-suave hover:text-tinta"
+                        }`}
+                      >
+                        <IconSwap className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => eliminar(d)}
+                        disabled={eliminandoId === d.id}
+                        aria-label="Eliminar discurso"
+                        title="Eliminar discurso"
+                        className={`${botonIcono} text-apagado hover:bg-[#fbeeed] hover:text-[#b23c36]`}
+                      >
+                        <IconTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {intercambiandoId === d.id && (
+                    <div className="mt-3 rounded-xl bg-tinta-suave p-3.5">
+                      <p className="text-sm text-tinta">
+                        Intercambia discursante y bosquejo con otro domingo. Los
+                        dos quedarán como pendientes.
+                      </p>
+                      <select
+                        value={destinoIntercambio}
+                        onChange={(e) => setDestinoIntercambio(e.target.value)}
+                        aria-label="Domingo con el que intercambiar"
+                        className={`mt-2.5 ${campo}`}
+                      >
+                        <option value="">Elige el otro domingo…</option>
+                        {proximos
+                          .filter((x) => x.id !== d.id)
+                          .map((x) => (
+                            <option key={x.id} value={x.id}>
+                              {formatearFecha(x.fecha)}:{" "}
+                              {x.discursante?.nombre ?? "sin asignar"}
+                            </option>
+                          ))}
+                      </select>
+                      <div className="mt-2.5 flex gap-2">
+                        <button
+                          onClick={() => confirmarIntercambio(d.id)}
+                          disabled={!destinoIntercambio || guardandoIntercambio}
+                          className={`flex-1 ${botonPrimario}`}
+                        >
+                          {guardandoIntercambio ? "Intercambiando…" : "Intercambiar"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIntercambiandoId(null);
+                            setDestinoIntercambio("");
+                          }}
+                          className="flex-1 rounded-full bg-white px-5 py-2.5 text-sm font-medium text-tinta transition-colors hover:bg-papel"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-3 space-y-2">
+                    <select
+                      value={d.discursanteId ?? ""}
+                      disabled={guardandoId === d.id}
+                      aria-label="Discursante"
+                      onChange={(e) =>
+                        asignar(d.id, {
+                          discursanteId: e.target.value ? Number(e.target.value) : null,
+                        })
+                      }
+                      className={campo}
+                    >
+                      <option value="">Sin discursante</option>
+                      {opcionesDiscursantes}
+                    </select>
+                    <select
+                      value={d.bosquejoNumero ?? ""}
+                      disabled={guardandoId === d.id}
+                      aria-label="Bosquejo"
+                      onChange={(e) =>
+                        asignar(d.id, {
+                          bosquejoNumero: e.target.value ? Number(e.target.value) : null,
+                        })
+                      }
+                      className={campo}
+                    >
+                      <option value="">Sin bosquejo</option>
+                      {opcionesBosquejos}
+                    </select>
+                    <input
+                      value={d.notas ?? ""}
+                      onChange={(e) => cambiarNotas(d.id, e.target.value)}
+                      onBlur={(e) => guardarNotas(d.id, e.target.value)}
+                      placeholder="Notas: canción, imagen…"
+                      aria-label="Notas"
+                      className={campo}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
     </main>
   );
