@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   obtenerDiscursos,
@@ -7,13 +8,13 @@ import {
   type Discurso,
   type EstadoDiscurso,
 } from "../../lib/api";
-import { formatearFecha } from "../../lib/fechas";
-import PageHeader from "./_components/PageHeader";
+
+function aFecha(fecha: string) {
+  return new Date(fecha.slice(0, 10) + "T00:00:00");
+}
 
 function generarMensaje(d: Discurso) {
-  const fechaCorta = new Date(
-    d.fecha.slice(0, 10) + "T00:00:00",
-  ).toLocaleDateString("es-ES");
+  const fechaCorta = aFecha(d.fecha).toLocaleDateString("es-ES");
   const nombre = d.discursante?.nombre ?? "";
   const bosquejo = d.bosquejoNumero ?? "";
   const titulo = d.bosquejo?.titulo ?? "";
@@ -35,27 +36,71 @@ function enlaceWhatsapp(d: Discurso) {
   return `https://wa.me/${telefono}?text=${texto}`;
 }
 
-function selectorEstado(
-  d: Discurso,
-  onChange: (estado: EstadoDiscurso) => void,
-) {
-  const estilos: Record<EstadoDiscurso, string> = {
-    pendiente: "bg-gray-100 text-gray-600",
-    enviado: "bg-blue-100 text-blue-700",
-    confirmado: "bg-green-100 text-green-700",
-    rechazado: "bg-red-100 text-red-700",
-  };
+const estados: { valor: EstadoDiscurso; texto: string; punto: string }[] = [
+  { valor: "pendiente", texto: "Pendiente", punto: "bg-[#a3a9b8]" },
+  { valor: "enviado", texto: "Enviado", punto: "bg-[#5b7fc7]" },
+  { valor: "confirmado", texto: "Confirmado", punto: "bg-[#3a9d66]" },
+  { valor: "rechazado", texto: "Rechazado", punto: "bg-[#c0504a]" },
+];
+
+function SelectorEstado({
+  estado,
+  onChange,
+  sobreOscuro = false,
+}: {
+  estado: EstadoDiscurso;
+  onChange: (estado: EstadoDiscurso) => void;
+  sobreOscuro?: boolean;
+}) {
+  const actual = estados.find((e) => e.valor === estado) ?? estados[0];
   return (
-    <select
-      value={d.estado}
-      onChange={(e) => onChange(e.target.value as EstadoDiscurso)}
-      className={`px-2.5 py-1 rounded-full text-xs font-medium border-0 outline-none cursor-pointer ${estilos[d.estado]}`}
+    <label
+      className={`relative inline-flex shrink-0 items-center gap-2 rounded-full py-1.5 pl-3 pr-7 text-xs font-medium transition-colors ${
+        sobreOscuro
+          ? "bg-white/10 text-white hover:bg-white/15"
+          : "text-apagado hover:bg-tinta-suave"
+      }`}
     >
-      <option value="pendiente">Pendiente</option>
-      <option value="enviado">Enviado</option>
-      <option value="confirmado">Confirmado</option>
-      <option value="rechazado">Rechazado</option>
-    </select>
+      <span className={`h-2 w-2 rounded-full ${actual.punto}`} />
+      {actual.texto}
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="pointer-events-none absolute right-2.5 h-3 w-3 opacity-60"
+      >
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+      <select
+        value={estado}
+        onChange={(e) => onChange(e.target.value as EstadoDiscurso)}
+        aria-label="Estado del discurso"
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {estados.map((e) => (
+          <option key={e.valor} value={e.valor}>
+            {e.texto}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function Cabecera({ children }: { children?: React.ReactNode }) {
+  return (
+    <header className="bg-tinta text-white">
+      <div className="mx-auto max-w-md px-5 pt-6 pb-7">
+        <p className="text-sm text-white/70">
+          San Sebastián de los Reyes Centro
+        </p>
+        <h1 className="mt-0.5 font-serif text-xl">Discursos públicos</h1>
+        {children}
+      </div>
+    </header>
   );
 }
 
@@ -67,7 +112,7 @@ export default function AdminPage() {
   useEffect(() => {
     obtenerDiscursos()
       .then((data) => setDiscursos(data))
-      .catch(() => setError("No se pudieron cargar los discursos"))
+      .catch(() => setError("No se pudieron cargar los discursos. Revisa la conexión y recarga la página."))
       .finally(() => setCargando(false));
   }, []);
 
@@ -79,22 +124,19 @@ export default function AdminPage() {
     try {
       await actualizarEstadoDiscurso(id, nuevoEstado);
     } catch {
-      setError("No se pudo guardar el cambio de estado");
+      setError("No se pudo guardar el cambio de estado. Inténtalo de nuevo.");
     }
   }
 
-  if (cargando) {
+  if (cargando || error) {
     return (
-      <main className="flex items-center justify-center py-24">
-        <p className="text-gray-500 text-sm">Cargando discursos…</p>
-      </main>
-    );
-  }
-
-  if (error) {
-    return (
-      <main className="flex items-center justify-center py-24">
-        <p className="text-red-500 text-sm">{error}</p>
+      <main>
+        <Cabecera />
+        <p
+          className={`mt-20 px-6 text-center text-sm ${error ? "text-[#c0504a]" : "text-apagado"}`}
+        >
+          {error ?? "Cargando discursos…"}
+        </p>
       </main>
     );
   }
@@ -103,101 +145,162 @@ export default function AdminPage() {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   const proximos = discursos
-    .filter((d) => new Date(d.fecha.slice(0, 10) + "T00:00:00") >= hoy)
+    .filter((d) => aFecha(d.fecha) >= hoy)
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   const [proximo, ...resto] = proximos;
 
   if (!proximo) {
     return (
-      <main className="pb-10">
-        <PageHeader
-          title="Discursos públicos"
-          subtitle="San Sebastián de los Reyes Centro"
-          back={false}
-        />
-        <p className="text-gray-500 text-sm text-center mt-24">
-          No hay próximos discursos
-        </p>
+      <main>
+        <Cabecera />
+        <div className="mx-auto mt-16 max-w-md px-6 text-center">
+          <p className="font-serif text-lg text-texto">
+            No hay discursos programados
+          </p>
+          <p className="mt-1 text-sm text-apagado">
+            Añade el siguiente domingo desde Asignar.
+          </p>
+          <Link
+            href="/admin/discursos"
+            className="mt-5 inline-block rounded-full bg-tinta px-5 py-2.5 text-sm font-medium text-white hover:bg-tinta-oscura"
+          >
+            Ir a Asignar
+          </Link>
+        </div>
       </main>
     );
   }
 
+  const fechaProximo = aFecha(proximo.fecha);
+  const dias = Math.round((fechaProximo.getTime() - hoy.getTime()) / 86400000);
+  const cuando =
+    dias === 0 ? "Hoy" : dias <= 7 ? "Este domingo" : "Próximo discurso";
+
+  // Agrupa el resto por mes
+  const anioActual = hoy.getFullYear();
+  const meses: { clave: string; titulo: string; anio: number; items: Discurso[] }[] = [];
+  for (const d of resto) {
+    const f = aFecha(d.fecha);
+    const clave = `${f.getFullYear()}-${f.getMonth()}`;
+    const ultimo = meses[meses.length - 1];
+    if (ultimo && ultimo.clave === clave) ultimo.items.push(d);
+    else
+      meses.push({
+        clave,
+        titulo: f.toLocaleDateString("es-ES", { month: "long" }),
+        anio: f.getFullYear(),
+        items: [d],
+      });
+  }
+
   return (
     <main className="pb-10">
-      <PageHeader
-        title="Discursos públicos"
-        subtitle="San Sebastián de los Reyes Centro"
-        back={false}
-      />
+      <Cabecera>
+        <div className="mt-7 border-t border-white/15 pt-6">
+          <p className="text-sm text-white/70">{cuando}, a las 10:00</p>
+          <p className="mt-1 font-serif text-[2.75rem] leading-none tracking-tight">
+            {fechaProximo.toLocaleDateString("es-ES", {
+              day: "numeric",
+              month: "long",
+            })}
+          </p>
 
-      <section className="px-4 mt-5">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
-          Esta semana
-        </h2>
-        <div className="bg-white rounded-2xl shadow-md shadow-gray-200/60 ring-1 ring-blue-100 p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-blue-600 font-medium capitalize">
-                {formatearFecha(proximo.fecha)}
+          <div className="mt-6">
+            <p className="font-serif text-2xl leading-snug">
+              {proximo.discursante?.nombre ?? "Sin discursante asignado"}
+            </p>
+            {proximo.discursante?.congregacionOrigen && (
+              <p className="mt-0.5 text-sm text-white/70">
+                Congregación {proximo.discursante.congregacionOrigen}
               </p>
-              <p className="text-base font-semibold text-gray-900 mt-0.5">
-                {proximo.discursante?.nombre ?? "Sin asignar"}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                {proximo.bosquejoNumero
-                  ? `Bosquejo ${proximo.bosquejoNumero}`
-                  : ""}
-                {proximo.bosquejo?.titulo
-                  ? ` · ${proximo.bosquejo.titulo}`
-                  : ""}
-              </p>
-            </div>
-            {selectorEstado(proximo, (estado) =>
-              cambiarEstado(proximo.id, estado),
             )}
           </div>
 
-          {proximo.discursante && (
-            <a
-              href={enlaceWhatsapp(proximo)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex items-center justify-center gap-2 w-full bg-linear-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 active:from-green-700 active:to-emerald-700 text-white font-medium text-sm py-3 rounded-xl transition-colors shadow-sm shadow-green-200"
-            >
-              Enviar recordatorio por WhatsApp
-            </a>
-          )}
-        </div>
-      </section>
-
-      <section className="px-4 mt-6">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
-          Próximos discursos
-        </h2>
-        <div className="space-y-2">
-          {resto.map((d) => (
-            <div
-              key={d.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-center justify-between"
-            >
-              <div>
-                <p className="text-sm text-gray-500 capitalize">
-                  {formatearFecha(d.fecha)}
+          {(proximo.bosquejo?.titulo || proximo.bosquejoNumero) && (
+            <div className="mt-5 border-l-2 border-white/30 pl-3.5">
+              {proximo.bosquejo?.titulo && (
+                <p className="font-serif text-[1.0625rem] leading-relaxed text-white/95">
+                  «{proximo.bosquejo.titulo}»
                 </p>
-                <p className="text-sm font-medium text-gray-900">
-                  {d.discursante?.nombre ?? "Sin asignar"}
+              )}
+              {proximo.bosquejoNumero && (
+                <p className="mt-1 text-xs text-white/60">
+                  Bosquejo n.º {proximo.bosquejoNumero}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {d.bosquejoNumero ? `Bosquejo ${d.bosquejoNumero}` : ""}
-                  {d.bosquejo?.titulo ? ` · ${d.bosquejo.titulo}` : ""}
-                </p>
-              </div>
-              {selectorEstado(d, (estado) => cambiarEstado(d.id, estado))}
+              )}
             </div>
-          ))}
+          )}
+
+          <div className="mt-6 flex items-center justify-between gap-3">
+            <SelectorEstado
+              estado={proximo.estado}
+              onChange={(estado) => cambiarEstado(proximo.id, estado)}
+              sobreOscuro
+            />
+            {proximo.discursante && (
+              <a
+                href={enlaceWhatsapp(proximo)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-whatsapp px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-whatsapp-oscuro"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path d="M12 2.5a9.5 9.5 0 0 0-8.2 14.3L2.5 21.5l4.8-1.3A9.5 9.5 0 1 0 12 2.5Zm0 17.3c-1.5 0-3-.4-4.2-1.2l-.3-.2-2.8.8.8-2.7-.2-.3A7.8 7.8 0 1 1 12 19.8Zm4.3-5.8c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.4 6.4 0 0 1-3.2-2.8c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.7-1.7c-.2-.5-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3 2.8 2.8 0 0 0-.9 2.1c0 1.2.9 2.4 1 2.6.1.2 1.8 2.7 4.3 3.8 1.6.7 2.2.7 3 .6.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1l-.4-.2Z" />
+                </svg>
+                Enviar recordatorio
+              </a>
+            )}
+          </div>
         </div>
-      </section>
+      </Cabecera>
+
+      <div className="mx-auto max-w-md px-5">
+        {meses.map((mes) => (
+          <section key={mes.clave} className="mt-8">
+            <h2 className="font-serif text-lg capitalize text-texto">
+              {mes.titulo}
+              {mes.anio !== anioActual && (
+                <span className="ml-2 font-sans text-sm text-apagado">
+                  {mes.anio}
+                </span>
+              )}
+            </h2>
+            <ul className="mt-2 divide-y divide-linea border-y border-linea">
+              {mes.items.map((d) => (
+                <li key={d.id} className="flex items-start gap-4 py-4">
+                  <div className="w-9 shrink-0 pt-0.5 text-center">
+                    <p className="font-serif text-2xl leading-none text-tinta">
+                      {aFecha(d.fecha).getDate()}
+                    </p>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-texto">
+                      {d.discursante?.nombre ?? (
+                        <span className="text-apagado">Sin asignar</span>
+                      )}
+                    </p>
+                    {d.bosquejo?.titulo && (
+                      <p className="mt-0.5 font-serif text-sm leading-snug text-apagado">
+                        {d.bosquejo.titulo}
+                      </p>
+                    )}
+                    {d.bosquejoNumero && (
+                      <p className="mt-1 text-xs text-apagado/80">
+                        Bosquejo n.º {d.bosquejoNumero}
+                      </p>
+                    )}
+                  </div>
+                  <SelectorEstado
+                    estado={d.estado}
+                    onChange={(estado) => cambiarEstado(d.id, estado)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
     </main>
   );
 }
