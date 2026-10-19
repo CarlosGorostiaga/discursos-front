@@ -5,8 +5,12 @@ import {
   obtenerDiscursantes,
   crearDiscursante,
   actualizarDiscursante,
+  eliminarDiscursante,
+  obtenerDiscursos,
   type Discursante,
+  type Discurso,
 } from "../../../lib/api";
+import { formatearFecha } from "../../../lib/fechas";
 import PageHeader from "../_components/PageHeader";
 import SearchInput from "../_components/SearchInput";
 
@@ -22,6 +26,9 @@ export default function DiscursantesPage() {
   });
   const [mostrarNuevo, setMostrarNuevo] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [discursos, setDiscursos] = useState<Discurso[]>([]);
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function cargar() {
     obtenerDiscursantes()
@@ -31,6 +38,10 @@ export default function DiscursantesPage() {
 
   useEffect(() => {
     cargar();
+    // Para avisar, al eliminar, de los discursos que tiene asignados
+    obtenerDiscursos()
+      .then(setDiscursos)
+      .catch(() => {});
   }, []);
 
   function iniciarEdicion(d: Discursante) {
@@ -52,6 +63,45 @@ export default function DiscursantesPage() {
     });
     setEditandoId(null);
     cargar();
+  }
+
+  async function eliminar(d: Discursante) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const suyos = discursos.filter((x) => x.discursanteId === d.id);
+    const proximos = suyos
+      .filter((x) => new Date(x.fecha.slice(0, 10) + "T00:00:00") >= hoy)
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+    const pasados = suyos.length - proximos.length;
+
+    let mensaje = `¿Eliminar a ${d.nombre}? Esta acción no se puede deshacer.`;
+    if (proximos.length > 0) {
+      const fechas = proximos.map((x) => `• ${formatearFecha(x.fecha)}`).join("\n");
+      mensaje += `\n\nTiene ${proximos.length} ${proximos.length === 1 ? "discurso próximo asignado, que quedará" : "discursos próximos asignados, que quedarán"} sin asignar:\n${fechas}`;
+    }
+    if (pasados > 0) {
+      mensaje += `\n\nEn el histórico, sus ${pasados} ${pasados === 1 ? "discurso pasado aparecerá" : "discursos pasados aparecerán"} como "Sin asignar".`;
+    }
+    if (!window.confirm(mensaje)) return;
+
+    setEliminandoId(d.id);
+    setError(null);
+    try {
+      await eliminarDiscursante(d.id);
+      setDiscursantes((prev) => prev.filter((x) => x.id !== d.id));
+      setDiscursos((prev) =>
+        prev.map((x) =>
+          x.discursanteId === d.id
+            ? { ...x, discursanteId: null, discursante: null }
+            : x,
+        ),
+      );
+      setEditandoId(null);
+    } catch {
+      setError("No se pudo eliminar el discursante");
+    } finally {
+      setEliminandoId(null);
+    }
   }
 
   async function crearNuevo() {
@@ -137,6 +187,10 @@ export default function DiscursantesPage() {
         }
       />
 
+      {error && (
+        <p className="text-red-500 text-sm text-center mt-4">{error}</p>
+      )}
+
       <div className="px-4 mt-4">
         <SearchInput
           value={busqueda}
@@ -187,6 +241,13 @@ export default function DiscursantesPage() {
                   Cancelar
                 </button>
               </div>
+              <button
+                onClick={() => eliminar(d)}
+                disabled={eliminandoId === d.id}
+                className="mt-3 w-full text-red-600 hover:bg-red-50 active:bg-red-100 disabled:opacity-50 text-sm font-medium py-2.5 rounded-xl border border-red-100 transition-colors"
+              >
+                {eliminandoId === d.id ? "Eliminando…" : "Eliminar discursante"}
+              </button>
             </div>
           ) : (
             <div

@@ -166,3 +166,10 @@ export async function actualizarNotasDiscurso(
   if (!res.ok) throw new Error("Error al guardar la nota");
   return res.json();
 }
+
+export async function eliminarDiscursante(id: number): Promise<void> {
+  const res = await fetch(`${API_URL}/discursantes/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Error al eliminar discursante");
+}
