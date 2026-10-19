@@ -73,11 +73,29 @@ function IconBook(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconClock(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
 const tabs = [
   { href: "/admin", label: "Inicio", Icon: IconHome },
   { href: "/admin/discursos", label: "Asignar", Icon: IconLink },
   { href: "/admin/discursantes", label: "Discursantes", Icon: IconUser },
   { href: "/admin/bosquejos", label: "Bosquejos", Icon: IconBook },
+  { href: "/admin/historico", label: "Histórico", Icon: IconClock },
 ];
 
 export default function BottomNav() {
@@ -85,7 +103,7 @@ export default function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-20 bg-white/90 backdrop-blur-md border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
-      <div className="max-w-md mx-auto grid grid-cols-4">
+      <div className="max-w-md mx-auto grid grid-cols-5">
         {tabs.map(({ href, label, Icon }) => {
           const active = pathname === href;
           return (
