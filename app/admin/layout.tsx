@@ -6,7 +6,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-papel">
       <div className="pb-20">{children}</div>
       <BottomNav />
     </div>

@@ -29,24 +29,24 @@ export default function PageHeader({
   right?: ReactNode;
 }) {
   return (
-    <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-5 py-4 sticky top-0 z-10">
-      <div className="flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-10 bg-tinta text-white">
+      <div className="mx-auto flex max-w-md items-center justify-between gap-3 px-5 py-4">
         <div className="flex items-center gap-3 min-w-0">
           {back && (
             <Link
               href="/admin"
               aria-label="Volver"
-              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 active:bg-gray-300 transition-colors"
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 active:bg-white/25 transition-colors"
             >
               <IconChevronLeft className="w-5 h-5" />
             </Link>
           )}
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-gray-900 truncate">
+            <h1 className="font-serif text-xl truncate">
               {title}
             </h1>
             {subtitle && (
-              <p className="text-sm text-gray-500 truncate">{subtitle}</p>
+              <p className="text-sm text-white/70 truncate">{subtitle}</p>
             )}
           </div>
         </div>

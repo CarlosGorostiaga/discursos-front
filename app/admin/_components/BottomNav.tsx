@@ -102,7 +102,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-20 bg-white/90 backdrop-blur-md border-t border-gray-100 pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 inset-x-0 z-20 bg-white/95 backdrop-blur-md border-t border-linea pb-[env(safe-area-inset-bottom)]">
       <div className="max-w-md mx-auto grid grid-cols-5">
         {tabs.map(({ href, label, Icon }) => {
           const active = pathname === href;
@@ -111,7 +111,7 @@ export default function BottomNav() {
               key={href}
               href={href}
               className={`flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors ${
-                active ? "text-blue-600" : "text-gray-400 hover:text-gray-600"
+                active ? "text-tinta" : "text-apagado/70 hover:text-apagado"
               }`}
             >
               <Icon className={`w-5 h-5 ${active ? "stroke-[2.5]" : ""}`} />
